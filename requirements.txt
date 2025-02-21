@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+python-multipart
+opencv-python
+easyocr
+numpy
+Pillow
+jinja2
+python-jose

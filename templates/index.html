@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Number Plate Detection</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .upload-container {
+            text-align: center;
+            padding: 20px;
+            border: 2px dashed #ccc;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        #uploadForm {
+            margin: 20px 0;
+        }
+        #preview {
+            max-width: 100%;
+            margin-top: 20px;
+            display: none;
+        }
+        #result {
+            margin-top: 20px;
+        }
+        .output-image {
+            max-width: 100%;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Number Plate Detection</h1>
+
+    <div class="upload-container">
+        <form id="uploadForm">
+            <input type="file" id="imageInput" accept=".jpg,.jpeg,.png" onchange="previewImage()">
+            <button type="submit">Detect Number Plate</button>
+        </form>
+        <img id="preview" alt="Preview">
+    </div>
+
+    <div id="result">
+        <h2>Results:</h2>
+        <div id="detectedPlates"></div>
+        <div id="outputImage"></div>
+    </div>
+
+    <script>
+        function previewImage() {
+            const preview = document.getElementById('preview');
+            const file = document.getElementById('imageInput').files[0];
+            const reader = new FileReader();
+
+            reader.onload = function(e) {
+                preview.src = e.target.result;
+                preview.style.display = 'block';
+            }
+
+            if (file) {
+                reader.readAsDataURL(file);
+            }
+        }
+
+        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const fileInput = document.getElementById('imageInput');
+            const file = fileInput.files[0];
+
+            if (!file) {
+                alert('Please select an image first');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch('/detect', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.detail || 'An error occurred');
+                }
+
+                // Display results
+                const detectedPlates = document.getElementById('detectedPlates');
+                detectedPlates.innerHTML = '<h3>Detected Plates:</h3>' +
+                    data.detected_plates.map(plate => `<p>${plate}</p>`).join('');
+
+                const outputImage = document.getElementById('outputImage');
+                outputImage.innerHTML = `
+                    <h3>Processed Image:</h3>
+                    <img src="${data.output_image}" class="output-image" alt="Processed image">
+                `;
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        });
+    </script>
+</body>
+</html>
