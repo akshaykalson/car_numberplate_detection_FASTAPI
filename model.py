@@ -2,10 +2,18 @@ import cv2
 import easyocr
 import os
 
+
 class NumberPlateDetector:
     def __init__(self):
+        # Get the absolute path to the resources directory
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        cascade_path = os.path.join(base_dir, "resources", "numberplate_haarcade.xml")
+
         # Initialize cascade classifier
-        self.detector = cv2.CascadeClassifier("resources/numberplate_haarcade.xml")
+        self.detector = cv2.CascadeClassifier(cascade_path)
+        if self.detector.empty():
+            raise ValueError(f"Error: Cascade classifier could not be loaded from {cascade_path}")
+
         # Initialize the easyocr Reader object
         self.reader = easyocr.Reader(['en'])
 
@@ -38,35 +46,45 @@ class NumberPlateDetector:
 
             # draw text in the frame
             cv2.putText(img, plate_text, (x, y - 5),
-                       cv2.FONT_HERSHEY_COMPLEX, 0.8, (0, 255, 0), 2)
+                        cv2.FONT_HERSHEY_COMPLEX, 0.8, (0, 255, 0), 2)
 
         return img, detected_plates
 
+
 def process_image(input_image_path: str, output_dir: str = "output_images"):
-    # Create output directory if it doesn't exist
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
+    try:
+        # Create output directory if it doesn't exist
+        os.makedirs(output_dir, exist_ok=True)
 
-    # Initialize the detector
-    detector = NumberPlateDetector()
+        # Initialize the detector
+        detector = NumberPlateDetector()
 
-    # Read the input image
-    img = cv2.imread(input_image_path)
-    if img is None:
-        raise ValueError(f"Could not read image at {input_image_path}")
+        # Read the input image
+        img = cv2.imread(input_image_path)
+        if img is None:
+            raise ValueError(f"Could not read image at {input_image_path}")
 
-    # Process the image
-    processed_img, detected_plates = detector.detect_plate(img)
+        # Process the image
+        processed_img, detected_plates = detector.detect_plate(img)
 
-    # Save the output image
-    output_path = os.path.join(output_dir, 'output_image.jpg')
-    cv2.imwrite(output_path, processed_img)
+        # Save the output image
+        output_path = os.path.join(output_dir, 'output_image.jpg')
+        cv2.imwrite(output_path, processed_img)
 
-    return output_path, detected_plates
+        return output_path, detected_plates
+
+    except Exception as e:
+        print(f"Error in process_image: {str(e)}")
+        raise
+
 
 # Example usage for testing
 if __name__ == "__main__":
-    test_image = "resources/inputimage.jpeg"
-    output_path, detected_plates = process_image(test_image)
-    print(f"Image processing completed. Output saved to: {output_path}")
-    print(f"Detected plates: {detected_plates}")
+    try:
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        test_image = os.path.join(base_dir, "resources", "inputimage.jpeg")
+        output_path, detected_plates = process_image(test_image)
+        print(f"Image processing completed. Output saved to: {output_path}")
+        print(f"Detected plates: {detected_plates}")
+    except Exception as e:
+        print(f"Error during testing: {str(e)}")
