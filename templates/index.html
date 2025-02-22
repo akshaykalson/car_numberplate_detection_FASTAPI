@@ -2,55 +2,198 @@
 <html>
 <head>
     <title>Number Plate Detection</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
+        :root {
+            --primary-color: #2563eb;
+            --secondary-color: #1e40af;
+            --background-color: #f3f4f6;
+            --border-color: #e5e7eb;
+        }
+
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--background-color);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
             max-width: 800px;
             margin: 0 auto;
-            padding: 20px;
+            background-color: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
+
+        h1 {
+            text-align: center;
+            color: var(--primary-color);
+            margin-bottom: 30px;
+        }
+
         .upload-container {
             text-align: center;
-            padding: 20px;
-            border: 2px dashed #ccc;
+            padding: 30px;
+            border: 2px dashed var(--border-color);
             border-radius: 10px;
             margin: 20px 0;
+            background-color: white;
+            transition: border-color 0.3s ease;
         }
+
+        .upload-container:hover {
+            border-color: var(--primary-color);
+        }
+
         #uploadForm {
             margin: 20px 0;
         }
+
+        .file-input-container {
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        .file-input-label {
+            display: inline-block;
+            padding: 12px 20px;
+            background-color: var(--primary-color);
+            color: white;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .file-input-label:hover {
+            background-color: var(--secondary-color);
+        }
+
+        #imageInput {
+            display: none;
+        }
+
+        .detect-btn {
+            padding: 12px 24px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+            display: none;
+        }
+
+        .detect-btn:hover {
+            background-color: var(--secondary-color);
+        }
+
+        .detect-btn:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
         #preview {
             max-width: 100%;
             margin-top: 20px;
             display: none;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
+
         #result {
-            margin-top: 20px;
+            margin-top: 30px;
+            display: none;
         }
+
         .output-image {
             max-width: 100%;
-            margin-top: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .plate-item {
+            background-color: #f8fafc;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .loading i {
+            animation: spin 1s linear infinite;
+        }
+
+        .error-message {
+            color: #dc2626;
+            background-color: #fee2e2;
+            padding: 10px;
+            border-radius: 6px;
+            margin-top: 10px;
+            display: none;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
     </style>
 </head>
 <body>
-    <h1>Number Plate Detection</h1>
+    <div class="container">
+        <h1>Number Plate Detection</h1>
 
-    <div class="upload-container">
-        <form id="uploadForm">
-            <input type="file" id="imageInput" accept=".jpg,.jpeg,.png" onchange="previewImage()">
-            <button type="submit">Detect Number Plate</button>
-        </form>
-        <img id="preview" alt="Preview">
-    </div>
+        <div class="upload-container">
+            <form id="uploadForm">
+                <div class="file-input-container">
+                    <label class="file-input-label">
+                        <i class="fas fa-upload"></i> Choose Image
+                        <input type="file" id="imageInput" accept=".jpg,.jpeg,.png" onchange="previewImage()">
+                    </label>
+                </div>
+                <button type="submit" class="detect-btn" id="detectBtn">
+                    <i class="fas fa-search"></i> Detect Number Plate
+                </button>
+            </form>
+            <img id="preview" alt="Preview">
+            <div id="errorMessage" class="error-message"></div>
+        </div>
 
-    <div id="result">
-        <h2>Results:</h2>
-        <div id="detectedPlates"></div>
-        <div id="outputImage"></div>
+        <div class="loading" id="loading">
+            <i class="fas fa-spinner fa-2x"></i>
+            <p>Processing image...</p>
+        </div>
+
+        <div id="result">
+            <h2>Results:</h2>
+            <div id="detectedPlates"></div>
+            <div id="outputImage"></div>
+        </div>
     </div>
 
     <script>
+        const detectBtn = document.getElementById('detectBtn');
+        const loading = document.getElementById('loading');
+        const result = document.getElementById('result');
+        const errorMessage = document.getElementById('errorMessage');
+
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.style.display = 'block';
+            setTimeout(() => {
+                errorMessage.style.display = 'none';
+            }, 5000);
+        }
+
         function previewImage() {
             const preview = document.getElementById('preview');
             const file = document.getElementById('imageInput').files[0];
@@ -59,6 +202,8 @@
             reader.onload = function(e) {
                 preview.src = e.target.result;
                 preview.style.display = 'block';
+                detectBtn.style.display = 'inline-block';
+                errorMessage.style.display = 'none';
             }
 
             if (file) {
@@ -73,7 +218,7 @@
             const file = fileInput.files[0];
 
             if (!file) {
-                alert('Please select an image first');
+                showError('Please select an image first');
                 return;
             }
 
@@ -81,29 +226,67 @@
             formData.append('file', file);
 
             try {
+                loading.style.display = 'block';
+                detectBtn.disabled = true;
+                result.style.display = 'none';
+                errorMessage.style.display = 'none';
+
                 const response = await fetch('/detect', {
                     method: 'POST',
-                    body: formData
+                    body: formData,
+                    headers: {
+                        'Accept': 'application/json'
+                    }
                 });
+
+                if (!response.ok) {
+                    const contentType = response.headers.get("content-type");
+                    if (contentType && contentType.includes("application/json")) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.detail || 'Server error');
+                    } else {
+                        throw new Error('Server error: ' + response.status);
+                    }
+                }
+
+                const contentType = response.headers.get("content-type");
+                if (!contentType || !contentType.includes("application/json")) {
+                    throw new Error("Server responded with non-JSON data");
+                }
 
                 const data = await response.json();
 
-                if (!response.ok) {
-                    throw new Error(data.detail || 'An error occurred');
+                if (!data.detected_plates || !Array.isArray(data.detected_plates)) {
+                    throw new Error("Invalid response format");
                 }
 
                 // Display results
                 const detectedPlates = document.getElementById('detectedPlates');
                 detectedPlates.innerHTML = '<h3>Detected Plates:</h3>' +
-                    data.detected_plates.map(plate => `<p>${plate}</p>`).join('');
+                    (data.detected_plates.length > 0
+                        ? data.detected_plates.map(plate => `
+                            <div class="plate-item">
+                                <i class="fas fa-car"></i> ${plate}
+                            </div>
+                        `).join('')
+                        : '<div class="plate-item">No number plates detected</div>'
+                    );
 
                 const outputImage = document.getElementById('outputImage');
-                outputImage.innerHTML = `
-                    <h3>Processed Image:</h3>
-                    <img src="${data.output_image}" class="output-image" alt="Processed image">
-                `;
+                if (data.output_image) {
+                    outputImage.innerHTML = `
+                        <h3>Processed Image:</h3>
+                        <img src="${data.output_image}" class="output-image" alt="Processed image">
+                    `;
+                }
+
+                result.style.display = 'block';
             } catch (error) {
-                alert('Error: ' + error.message);
+                console.error('Error:', error);
+                showError('Error processing image: ' + error.message);
+            } finally {
+                loading.style.display = 'none';
+                detectBtn.disabled = false;
             }
         });
     </script>
