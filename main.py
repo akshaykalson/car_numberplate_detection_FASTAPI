@@ -37,33 +37,28 @@ async def home(request: Request):
 
 @app.post("/detect", response_model=DetectionResponse)
 async def detect_plate(file: UploadFile = File(...)):
-    if not file.filename.lower().endswith(tuple(ALLOWED_EXTENSIONS)):
+    if not file.filename.lower().endswith(('.png', '.jpg', '.jpeg')):
         raise HTTPException(status_code=400, detail="Invalid file type")
 
     try:
-        # Save uploaded file temporarily
+        # Save the uploaded file
         input_path = os.path.join(UPLOAD_FOLDER, file.filename)
         with open(input_path, "wb") as buffer:
             content = await file.read()
             buffer.write(content)
 
         # Process the image
-        output_path, detected_plates = process_image(
-            input_path,
-            output_dir=OUTPUT_FOLDER
-        )
+        output_path, detected_plates = process_image(input_path)
 
-        # Clean up uploaded file
+        # Clean up the input file
         os.remove(input_path)
 
-        return DetectionResponse(
-            message="Success",
-            detected_plates=detected_plates,
-            output_image=f"/get-image/output_image.jpg"
-        )
-
+        return {
+            "message": "Success",
+            "detected_plates": detected_plates,
+            "output_image": f"/get-image/output_image.jpg"
+        }
     except Exception as e:
-        # Clean up on error
         if os.path.exists(input_path):
             os.remove(input_path)
         raise HTTPException(status_code=500, detail=str(e))
